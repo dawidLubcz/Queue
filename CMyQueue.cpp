@@ -31,7 +31,7 @@ bool_t CMyQueue<T>::push(T a_oItem)
     if(m_uiSize == m_uiArraySize)
     {
         // new size
-        int newLength = (m_uiArraySize == 0) ? MIN_SIZE : m_uiArraySize * 2;
+        int newLength = (m_uiArraySize == 0) ? MIN_SIZE : m_uiArraySize + MIN_SIZE;
 
         T* pNewArray = new T[newLength];
 
@@ -94,7 +94,6 @@ bool_t CMyQueue<T>::push(T a_oItem)
 
     m_paItems[m_uiTail] = a_oItem;
     m_uiSize++;
-
     return fResult;
 }
 
@@ -129,7 +128,6 @@ bool_t CMyQueue<T>::pop(T &a_oItem)
     {
         a_oItem = T(0);
     }
-
     return fResult;
 }
 
@@ -179,7 +177,7 @@ bool_t CMyQueue<T>::getItems(T *a_atItemsArray, uint64_t a_ui64Size)
 {
     bool_t fResult = false;
 
-    fResult = copyArray(m_paItems, a_atItemsArray, a_ui64Size);
+    fResult = copyArray(m_paItems, a_atItemsArray, 0, a_ui64Size);
 
     return fResult;
 }
@@ -193,9 +191,8 @@ bool_t CMyQueue<T>::clear()
 
     if(0 < m_uiSize)
     {
-        T *oldArray = m_paItems; // pointer to old array
-        T *newArray = new T[g_uiInitalSize];  // pointer to new array
-
+        T *oldArray = m_paItems;
+        T *newArray = new T[g_uiInitalSize];
         m_uiArraySize = 0;
         m_uiSize = 0;
         m_uiTail = -1;
@@ -213,17 +210,17 @@ bool_t CMyQueue<T>::clear()
 //-----------------------------------------------
 // copyArray
 template<typename T>
-bool_t CMyQueue<T>::copyArray(T *a_paSource, T *a_paDest, uint64_t a_uiSize)
+bool_t CMyQueue<T>::copyArray(T *a_paSource, T *a_paDest, uint64_t a_startIndex, uint64_t a_uiSize)
 {
     bool_t fResult = false;
 
     if(0 != a_paSource && 0 != a_paDest)
     {
-        for(uint64_t idx = 0; idx < a_uiSize; idx++)
+        for(uint64_t idx = 0; idx < a_uiSize - a_startIndex; idx++)
         {
             if(idx < m_uiSize)
             {
-                a_paDest[idx] = a_paSource[idx];
+                a_paDest[idx] = a_paSource[idx + a_startIndex];
             }
             else
             {
@@ -244,15 +241,17 @@ void CMyQueue<T>::tryReleaseMem()
 {
     if(m_uiSize > 0 && MIN_SIZE < m_uiArraySize)
     {
-        if(m_uiArraySize / m_uiSize == 2)
+        if(m_uiHead % MIN_SIZE == 0)
         {
-            T *oldArray = m_paItems; //pointer to old array
-            T *newArray = new T[m_uiSize]; // pointer to new array
+            uint64_t newSize = m_uiArraySize - MIN_SIZE;
+            T *oldArray = m_paItems;
+            T *newArray = new T[newSize];
 
-            copyArray(oldArray, newArray, m_uiSize); // copy
+            copyArray(oldArray, newArray, m_uiHead, m_uiArraySize);
 
             m_paItems = newArray;
-            m_uiArraySize = m_uiSize;
+            m_uiArraySize = newSize;
+            m_uiHead = 0;
 
             delete[] oldArray;
         }
